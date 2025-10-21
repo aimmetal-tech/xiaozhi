@@ -46,3 +46,9 @@ app.*.map.json
 
 # API_KEY related
 .env
+
+# FVM Version Cache
+.fvm/
+
+# IDE related
+.vscode/

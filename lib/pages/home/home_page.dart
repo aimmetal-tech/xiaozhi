@@ -1,10 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:xiaozhi/pages/aichat.dart';
+import 'package:xiaozhi/pages/conversation_page.dart';
 import 'package:xiaozhi/pages/shared/drawer_page.dart';
 
 const List<Map<String, dynamic>> testButton = [
-  {'title': 'AI对话', 'route': Aichat()},
+  {'title': 'AI对话', 'route': ConversationPage()},
 ];
 
 class HomePage extends StatelessWidget {
@@ -18,7 +18,10 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: colorScheme.primary,
-        title: Text('小智·HIPER', style: textTheme.headlineLarge!.copyWith(color: Colors.white)),
+        title: Text(
+          '小智·HIPER',
+          style: textTheme.headlineLarge!.copyWith(color: Colors.white),
+        ),
         actions: [
           IconButton(onPressed: () {}, icon: Icon(Icons.search, size: 30)),
         ],
@@ -35,11 +38,16 @@ class HomePage extends StatelessWidget {
         ),
         itemCount: testButton.length,
         itemBuilder: (context, index) {
-          return Container(
-            padding: EdgeInsets.all(25),
+          final randomColor = Colors.primaries[index % Colors.primaries.length].shade400;
+          return SizedBox.expand(
             child: ElevatedButton(
               style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.all(colorScheme.secondary),
+                // WidgetStateProperty.all: 所有状态都用同一个值
+                backgroundColor: WidgetStateProperty.all(randomColor),
+                padding: WidgetStateProperty.all(EdgeInsets.zero),
+                shape: WidgetStateProperty.all(
+                  const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                ),
               ),
               onPressed: () {
                 Navigator.of(context).push(
