@@ -5,6 +5,7 @@ import 'package:xiaozhi/pages/shared/drawer_page.dart';
 
 const List<Map<String, dynamic>> testButton = [
   {'title': 'AI对话', 'route': Aichat()},
+  // {'title': '测试页面', 'route': },
 ];
 
 class HomePage extends StatelessWidget {
@@ -18,7 +19,10 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: colorScheme.primary,
-        title: Text('小智·HIPER', style: textTheme.headlineLarge!.copyWith(color: Colors.white)),
+        title: Text(
+          '小智·HIPER',
+          style: textTheme.headlineLarge!.copyWith(color: Colors.white),
+        ),
         actions: [
           IconButton(onPressed: () {}, icon: Icon(Icons.search, size: 30)),
         ],
@@ -50,7 +54,7 @@ class HomePage extends StatelessWidget {
               },
               child: Text(
                 testButton[index]['title'],
-                style: TextStyle(color: Colors.white, fontSize: 25),
+                style: TextStyle(color: Colors.white, fontSize: 23),
               ),
             ),
           );

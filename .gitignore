@@ -46,3 +46,10 @@ app.*.map.json
 
 # API_KEY related
 .env
+
+# AI IDE related
+.lingma/
+.vscode/
+
+# FVM Version Cache
+.fvm/
