@@ -1,17 +1,21 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:velocity_x/velocity_x.dart';
 import 'package:xiaozhi/pages/shared/drawer_page.dart';
+import 'package:xiaozhi/services/chat_service.dart';
 
-class ConversationPage extends StatefulWidget {
-  const ConversationPage({super.key});
+class ChatPage extends StatefulWidget {
+  const ChatPage({super.key});
 
   @override
-  State<ConversationPage> createState() => _ConversationPageState();
+  State<ChatPage> createState() => _ChatPageState();
 }
 
-class _ConversationPageState extends State<ConversationPage> {
-  bool isUser = false;
+class _ChatPageState extends State<ChatPage> {
+  bool isUser = true;
   final TextEditingController _textEditingController = TextEditingController();
+  final List<Map<String, String>> chatHistory = [];
 
   Widget userChatBubble(BuildContext context, String text) {
     return Row(
@@ -108,8 +112,20 @@ class _ConversationPageState extends State<ConversationPage> {
                   ),
                 ),
                 IconButton(
-                  onPressed: () {
+                  onPressed: () async {
                     // TODO: Send Message to AI
+                    String content = _textEditingController.text;
+                    chatHistory.add({
+                      'role': 'user',
+                      'content': content
+                    });
+                    Map<String, dynamic> requestBody = {
+                      'model': 'kimi-k2-0905-preview',
+                      'temperature': 0.6,
+                      'messages': chatHistory
+                    };
+                    dynamic response = await chatService(requestBody);
+                    log(response.toString());
                   },
                   icon: Icon(Icons.arrow_upward),
                   style: ButtonStyle(

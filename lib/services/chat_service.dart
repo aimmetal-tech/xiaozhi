@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-Map<String, dynamic> apiUrlList = {
-  'Kimi': 'https://api.moonshot.cn/v1/chat/completions',
+Map<String, Uri> apiUriList = {
+  'Kimi': Uri.parse('https://api.moonshot.cn/v1/chat/completions'),
 };
 
 String apiKey = 'xxx';
@@ -14,14 +14,14 @@ Map<String, String> headers = {
 };
 
 // TODO: Service of Sending Message to AI
-Future<Map<String, dynamic>> conversationService(
+Future<Map<String, dynamic>> chatService(
   Map<String, dynamic> requestBody,
 ) async {
   try {
     final response = await http.post(
-      apiUrlList['Kimi'],
+      apiUriList['Kimi']!,
       headers: headers,
-      body: requestBody,
+      body: jsonEncode(requestBody),
     );
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);

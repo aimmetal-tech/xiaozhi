@@ -20,24 +20,21 @@ class HomeDrawer extends StatelessWidget {
               ),
               SizedBox(height: 10),
               Expanded(
-                child: ListView.builder(
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(
-                        '占位 $index',
-                        style: textTheme.bodyMedium,
-                      ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Icon(Icons.history),
+                      title: Text('历史记录', style: textTheme.bodySmall),
                       onTap: () {},
-                    );
-                  },
+                    ),
+                    Divider()
+                  ],
                 ),
               ),
               ListTile(
                 leading: Icon(Icons.person),
                 title: Text('用户信息', style: textTheme.bodySmall),
-                onTap: () {
-                  // 处理用户信息点击
-                },
+                onTap: () {},
               ),
             ],
           ),
@@ -52,8 +49,6 @@ class AIChatDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Drawer(
-      
-    );
+    return Drawer();
   }
 }
