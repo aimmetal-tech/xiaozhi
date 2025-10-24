@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:xiaozhi/model/chat_model.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:markdown_widget/widget/all.dart';
+import 'package:xiaozhi/models/chat_model.dart';
 import 'package:xiaozhi/pages/shared/drawer_page.dart';
 import 'package:xiaozhi/services/chat_service.dart';
 import 'package:xiaozhi/services/logger_service.dart';
+import 'package:xiaozhi/utils/toast.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -19,6 +22,10 @@ class _ChatPageState extends State<ChatPage> {
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, String>> chatHistory = [];
 
+  ColorScheme get colorScheme => Theme.of(context).colorScheme;
+  TextTheme get textTheme => Theme.of(context).textTheme;
+  Size get screenSize => MediaQuery.of(context).size;
+
   final FocusNode _focusNode = FocusNode();
 
   void _scrollToBottom() {
@@ -33,50 +40,59 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  Widget userChatBubble(BuildContext context, String text) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Flexible(
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(16, 16, 20, 16),
-            padding: const EdgeInsets.all(8),
-            width: MediaQuery.of(context).size.width / 1.5,
-            decoration: BoxDecoration(
-              color: Colors.grey[500],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: SelectableText(
-              text,
-              style: Theme.of(context).textTheme.bodySmall,
+  Widget userChatBubble(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 32),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Flexible(
+            child: Container(
+              constraints: BoxConstraints(
+                minHeight: 40,
+                maxWidth: screenSize.width / 1.6,
+              ),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey[500],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: MarkdownWidget(data: text, shrinkWrap: true),
             ),
           ),
-        ),
-        const CircleAvatar(child: Icon(Icons.person)),
-        const SizedBox(width: 20),
-      ],
+          const SizedBox(width: 20),
+          const CircleAvatar(child: Icon(Icons.person)),
+          const SizedBox(width: 20),
+        ],
+      ),
     );
   }
 
-  Widget aiChatBubble(BuildContext context, String text) {
+  Widget aiChatBubble(String text) {
     // 与背景色同色
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        SizedBox(width: 20),
-        CircleAvatar(child: Icon(Icons.smart_toy_sharp)),
-        Flexible(
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(16, 16, 20, 16),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
-            child: SelectableText(
-              text,
-              style: Theme.of(context).textTheme.bodySmall,
+    return Padding(
+      padding: const EdgeInsets.only(top: 32, right: 5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 20),
+          CircleAvatar(child: Icon(Icons.smart_toy_sharp)),
+          SizedBox(width: 20),
+          Flexible(
+            child: Container(
+              constraints: BoxConstraints(minHeight: 40, maxWidth: screenSize.width / 1.35),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.tealAccent,
+              ),
+              child: MarkdownWidget(data: text, shrinkWrap: true),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -85,7 +101,8 @@ class _ChatPageState extends State<ChatPage> {
     super.initState();
     chatHistory.add({
       'role': 'system',
-      'content': '你的名字是小智同学，你会根据用户的问题提出合理的解答，你尤其擅长解决学习问题',
+      'content':
+          '你的名字是小智同学，你会根据用户的问题提出合理的解答，你尤其擅长解决学习问题。当回答用户问题时要用markdown格式进行回答',
     });
   }
 
@@ -98,10 +115,6 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final screenSize = MediaQuery.of(context).size;
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: colorScheme.primary,
@@ -125,10 +138,24 @@ class _ChatPageState extends State<ChatPage> {
                   final text = chatHistory[index]['content'] ?? '';
                   if (role == 'system') return const SizedBox.shrink();
                   return role == 'user'
-                      ? userChatBubble(context, text)
-                      : aiChatBubble(context, text);
+                      ? userChatBubble(text)
+                      : aiChatBubble(text);
                 },
               ),
+            ),
+          ),
+          SizedBox(
+            height: 30, // 按需调大到和圆圈尺寸+边距一致
+            child: Center(
+              child: isSending
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('小智正在回应消息'),
+                        SpinKitCircle(color: Colors.black, size: 20),
+                      ],
+                    )
+                  : null, // 不发送时占位但不渲染内容
             ),
           ),
 
@@ -145,11 +172,11 @@ class _ChatPageState extends State<ChatPage> {
                     decoration: InputDecoration(hintText: '问问小智...'),
                   ),
                 ),
+                // 发送消息
                 IconButton(
                   onPressed: isSending
                       ? null
                       : () async {
-                          // TODO: Send Message to AI
                           String content = _textEditingController.text.trim();
                           // 如果输入框为空不做反应
                           if (content.isEmpty) return;
@@ -167,16 +194,11 @@ class _ChatPageState extends State<ChatPage> {
                             if (responseJson['success'] != true) {
                               /* 
                                 在异步函数内判断上下文Widget是否已经销毁 (dispose)
-                                因为接下来可能要用到ScaffoldMessenger的SnackBar来弹出提示消息
-                                需要用到context
+                                因为接下来可能要用到context
                               */
                               if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    '请求失败 ${responseJson['error'] ?? '未知错误'}',
-                                  ),
-                                ),
+                              ToastUtil.show(
+                                msg: '请求失败 ${responseJson['error'] ?? '未知错误'}',
                               );
                               setState(() => isSending = false);
                               return;
@@ -198,9 +220,7 @@ class _ChatPageState extends State<ChatPage> {
                           } catch (e) {
                             if (!context.mounted) return;
                             logger.e(e.toString());
-                            ScaffoldMessenger.of(
-                              context,
-                            ).showSnackBar(SnackBar(content: Text('异常: $e')));
+                            ToastUtil.show(msg: '异常: $e');
                             setState(() => isSending = false);
                           }
                         },

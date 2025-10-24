@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:xiaozhi/services/credential_service.dart';
+import 'package:xiaozhi/utils/toast.dart';
 
 class HomeDrawer extends StatelessWidget {
   const HomeDrawer({super.key});
@@ -57,7 +58,7 @@ class _AIChatDrawerState extends State<AIChatDrawer> {
   @override
   void initState() {
     super.initState();
-    ApiKeyStore.async.then((v) {
+    ApiKeyStore.load().then((v) {
       if (!mounted) return;
       _controller.text = v ?? '';
     });
@@ -91,9 +92,7 @@ class _AIChatDrawerState extends State<AIChatDrawer> {
                     final key = _controller.text.trim();
                     await ApiKeyStore.save(key);
                     if (!context.mounted) return;
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('已保存 API Key')));
+                    ToastUtil.show(msg: '已保存 API Key');
                   },
                   child: const Text('保存'),
                 ),
@@ -103,9 +102,7 @@ class _AIChatDrawerState extends State<AIChatDrawer> {
                     await ApiKeyStore.clear();
                     if (!context.mounted) return;
                     _controller.clear();
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('已清除 API Key')));
+                    ToastUtil.show(msg: '已清除 API Key');
                   },
                   child: const Text('清除'),
                 ),

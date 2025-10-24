@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'dart:developer';
 
 import 'package:http/http.dart' as http;
-import 'package:xiaozhi/model/chat_model.dart';
+import 'package:xiaozhi/models/chat_model.dart';
 import 'package:xiaozhi/services/credential_service.dart';
+import 'package:xiaozhi/services/logger_service.dart';
 
 Map<String, Uri> apiUriList = {
   'Kimi': Uri.parse('https://api.moonshot.cn/v1/chat/completions'),
@@ -14,10 +14,9 @@ Map<String, String> buildHeaders(String apiKey) => {
   'Authorization': 'Bearer $apiKey',
 };
 
-// TODO: Service of Sending Message to AI
 Future<Map<String, dynamic>> chatService(ChatRequestModel requestBody) async {
   try {
-    final apiKey = ApiKeyStore.sync ?? '';
+    final apiKey = ApiKeyStore.cached ?? '';
     if (apiKey.isEmpty) {
       return {
         'success': false,
@@ -32,7 +31,7 @@ Future<Map<String, dynamic>> chatService(ChatRequestModel requestBody) async {
     );
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);
-      log({'success': true, 'data': responseData}.toString());
+      logger.i({'success': true, 'data': responseData}.toString());
       return {'success': true, 'data': responseData};
     } else {
       return {

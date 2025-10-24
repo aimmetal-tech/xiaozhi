@@ -21,7 +21,12 @@ class ApiKeyStore {
     _cache = null;
   }
 
-  static String? get sync => _cache;
-  static Future<String?> get async async =>
-      _cache ?? (await SharedPreferences.getInstance()).getString(_kAPiKey);
+  static String? get cached => _cache;
+  static Future<String?> load() async {
+    if (_cache != null) return _cache;
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString(_kAPiKey);
+    _cache = value;
+    return value;
+  }
 }

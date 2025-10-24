@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:logger/logger.dart';
 
 late Logger logger;
@@ -13,5 +15,23 @@ void initLogger() {
       // 时间戳
       dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
     ),
+    output: MultiOutput([
+      ConsoleOutput(),
+      FileOutput(File('logs/app.log'))
+    ])
   );
+}
+
+class FileOutput extends LogOutput {
+  final File logFile;
+
+  FileOutput(this.logFile);
+
+  @override
+  void output(OutputEvent event) {
+    logFile.writeAsStringSync(
+      '${event.lines.join('\n')}\n',
+      mode: FileMode.append
+    );
+  }
 }
