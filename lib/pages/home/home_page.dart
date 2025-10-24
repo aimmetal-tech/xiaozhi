@@ -27,7 +27,7 @@ class HomePage extends StatelessWidget {
         ],
         centerTitle: true,
       ),
-      drawer: HomeDrawer(),
+      drawer: const HomeDrawer(),
       drawerEdgeDragWidth: MediaQuery.of(context).size.width,
       body: GridView.builder(
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(

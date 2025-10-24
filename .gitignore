@@ -52,3 +52,10 @@ app.*.map.json
 
 # IDE related
 .vscode/
+
+# AI or Agent Related
+.codex/
+.lingma/
+
+# Codex Related
+AGENTS.md
