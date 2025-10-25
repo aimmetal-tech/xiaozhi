@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:markdown_widget/widget/all.dart';
 import 'package:xiaozhi/models/chat_model.dart';
 import 'package:xiaozhi/pages/shared/drawer_page.dart';
 import 'package:xiaozhi/services/chat_service.dart';
 import 'package:xiaozhi/services/logger_service.dart';
 import 'package:xiaozhi/utils/toast.dart';
+import 'package:xiaozhi/widgets/chat_bubble.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -44,65 +44,6 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  Widget userChatBubble(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 32),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Flexible(
-            child: Container(
-              constraints: BoxConstraints(
-                minHeight: 40,
-                maxWidth: screenSize.width / 1.6,
-              ),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.grey[500],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: MarkdownWidget(data: text, shrinkWrap: true),
-            ),
-          ),
-          const SizedBox(width: 20),
-          const CircleAvatar(child: Icon(Icons.person)),
-          const SizedBox(width: 20),
-        ],
-      ),
-    );
-  }
-
-  Widget aiChatBubble(String text) {
-    // 与背景色同色
-    return Padding(
-      padding: const EdgeInsets.only(top: 32, right: 5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(width: 20),
-          CircleAvatar(child: Icon(Icons.smart_toy_sharp)),
-          SizedBox(width: 20),
-          Flexible(
-            child: Container(
-              constraints: BoxConstraints(
-                minHeight: 40,
-                maxWidth: screenSize.width / 1.35,
-              ),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.tealAccent,
-              ),
-              child: MarkdownWidget(data: text, shrinkWrap: true),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   void initState() {
     super.initState();
@@ -117,6 +58,7 @@ class _ChatPageState extends State<ChatPage> {
   void dispose() {
     _textEditingController.dispose();
     _scrollController.dispose();
+    _focusNode.dispose();
     _sseSub?.cancel();
     super.dispose();
   }
@@ -145,9 +87,7 @@ class _ChatPageState extends State<ChatPage> {
                   final role = chatHistory[index]['role'];
                   final text = chatHistory[index]['content'] ?? '';
                   if (role == 'system') return const SizedBox.shrink();
-                  return role == 'user'
-                      ? userChatBubble(text)
-                      : aiChatBubble(text);
+                  return ChatBubble(role: role ?? 'assistant', text: text);
                 },
               ),
             ),
@@ -182,6 +122,10 @@ class _ChatPageState extends State<ChatPage> {
                 ),
                 // 发送消息
                 IconButton(
+                  icon: Icon(Icons.arrow_upward),
+                  style: ButtonStyle(
+                    backgroundColor: WidgetStatePropertyAll(Colors.lightBlue),
+                  ),
                   onPressed: isSending
                       ? null
                       : () async {
@@ -264,22 +208,18 @@ class _ChatPageState extends State<ChatPage> {
                             setState(() => isSending = false);
                           }
                         },
-                  icon: Icon(Icons.arrow_upward),
-                  style: ButtonStyle(
-                    backgroundColor: WidgetStatePropertyAll(Colors.lightBlue),
-                  ),
                 ),
                 if (isSending)
                   IconButton(
-                    onPressed: () async {
-                      await _sseSub?.cancel();
-                      setState(() => isSending = false);
-                    },
                     icon: const Icon(Icons.stop),
                     style: const ButtonStyle(
                       backgroundColor: WidgetStatePropertyAll(Colors.redAccent),
                     ),
                     tooltip: '停止生成',
+                    onPressed: () async {
+                      await _sseSub?.cancel();
+                      setState(() => isSending = false);
+                    },
                   ),
               ],
             ),

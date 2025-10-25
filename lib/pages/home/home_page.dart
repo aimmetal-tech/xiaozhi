@@ -1,12 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:xiaozhi/pages/chat_page.dart';
-import 'package:xiaozhi/pages/markdwon_test.dart';
 import 'package:xiaozhi/pages/shared/drawer_page.dart';
 
 const List<Map<String, dynamic>> testButton = [
   {'title': 'AI对话', 'route': ChatPage()},
-  {'title': 'MarkdownTest', 'route': MarkdownPage()},
 ];
 
 class HomePage extends StatelessWidget {
