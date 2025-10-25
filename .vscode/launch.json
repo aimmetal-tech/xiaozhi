@@ -5,14 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "xiaozhi (Flutter Pixel 9 Pro)",
+            "name": "xiaozhi (Emulator)",
             "program": "lib/main.dart",
             "deviceId": "emulator-5554",
             "request": "launch",
             "type": "dart"
         },
         {
-            "name": "xiaozhi (Real Device)",
+            "name": "xiaozhi",
             "program": "lib/main.dart",
             "request": "launch",
             "type": "dart"

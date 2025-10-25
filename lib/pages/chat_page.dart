@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:markdown_widget/widget/all.dart';
@@ -17,6 +19,8 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   bool isUser = true;
   bool isSending = false;
+  StreamSubscription<ChatSSEModel>? _sseSub;
+
   // 定义控制器，文本编辑控制器和滚动控制器
   final TextEditingController _textEditingController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -82,7 +86,10 @@ class _ChatPageState extends State<ChatPage> {
           SizedBox(width: 20),
           Flexible(
             child: Container(
-              constraints: BoxConstraints(minHeight: 40, maxWidth: screenSize.width / 1.35),
+              constraints: BoxConstraints(
+                minHeight: 40,
+                maxWidth: screenSize.width / 1.35,
+              ),
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
@@ -110,6 +117,7 @@ class _ChatPageState extends State<ChatPage> {
   void dispose() {
     _textEditingController.dispose();
     _scrollController.dispose();
+    _sseSub?.cancel();
     super.dispose();
   }
 
@@ -177,46 +185,78 @@ class _ChatPageState extends State<ChatPage> {
                   onPressed: isSending
                       ? null
                       : () async {
-                          String content = _textEditingController.text.trim();
-                          // 如果输入框为空不做反应
-                          if (content.isEmpty) return;
-                          // 设置状态为正在发送，并将数据添加到历史记录
-                          setState(() => isSending = true);
-                          chatHistory.add({'role': 'user', 'content': content});
-                          // 清空输入框
-                          _textEditingController.clear();
                           try {
+                            final content = _textEditingController.text.trim();
+                            if (content.isEmpty) return;
+                            // 将用户消息加入历史并清空输入
+                            chatHistory.add({
+                              'role': 'user',
+                              'content': content,
+                            });
+                            _textEditingController.clear();
                             final requestBody = ChatRequestModel(
                               messages: chatHistory,
-                            );
-                            final responseJson = await chatService(requestBody);
-                            // 如果回应标识为不成功
-                            if (responseJson['success'] != true) {
-                              /* 
-                                在异步函数内判断上下文Widget是否已经销毁 (dispose)
-                                因为接下来可能要用到context
-                              */
-                              if (!context.mounted) return;
-                              ToastUtil.show(
-                                msg: '请求失败 ${responseJson['error'] ?? '未知错误'}',
-                              );
-                              setState(() => isSending = false);
-                              return;
-                            }
-                            // 如果回应标识为成功
-                            final responseModel = ChatResponseModel.fromJson(
-                              responseJson,
+                              stream: true, // 开启流式
                             );
 
-                            chatHistory.add({
-                              'role': 'assistant',
-                              'content': responseModel.content,
-                            });
-
+                            // 先插入一条 AI 占位消息
                             setState(() {
-                              isSending = false;
-                              _scrollToBottom();
+                              isSending = true;
+                              chatHistory.add({
+                                'role': 'assistant',
+                                'content': '',
+                              });
                             });
+
+                            _sseSub = chatServiceStream(requestBody).listen(
+                              (evt) {
+                                if (evt.error != null &&
+                                    evt.error!.isNotEmpty) {
+                                  if (!context.mounted) return;
+                                  logger.e(
+                                    'SSE error from stream: ${evt.error!}',
+                                  );
+                                  ToastUtil.show(msg: 'SSE错误: ${evt.error}');
+                                  return;
+                                }
+                                if (evt.done) {
+                                  if (!context.mounted) return;
+                                  setState(() => isSending = false);
+                                  return;
+                                }
+                                if (evt.delta.isNotEmpty) {
+                                  setState(() {
+                                    // 找到最后一条 assistant 消息，增量拼接
+                                    for (
+                                      int i = chatHistory.length - 1;
+                                      i >= 0;
+                                      i--
+                                    ) {
+                                      if (chatHistory[i]['role'] ==
+                                          'assistant') {
+                                        final prev =
+                                            chatHistory[i]['content'] ?? '';
+                                        chatHistory[i]['content'] =
+                                            prev + evt.delta;
+                                        break;
+                                      }
+                                    }
+                                    _scrollToBottom();
+                                  });
+                                }
+                              },
+                              onError: (e) {
+                                if (!context.mounted) return;
+                                logger.e('SSE subscription error: $e');
+                                ToastUtil.show(msg: '异常: $e');
+                                setState(() => isSending = false);
+                              },
+                              onDone: () {
+                                if (!context.mounted) return;
+                                setState(() => isSending = false);
+                              },
+                              cancelOnError: true,
+                            );
                           } catch (e) {
                             if (!context.mounted) return;
                             logger.e(e.toString());
@@ -229,6 +269,18 @@ class _ChatPageState extends State<ChatPage> {
                     backgroundColor: WidgetStatePropertyAll(Colors.lightBlue),
                   ),
                 ),
+                if (isSending)
+                  IconButton(
+                    onPressed: () async {
+                      await _sseSub?.cancel();
+                      setState(() => isSending = false);
+                    },
+                    icon: const Icon(Icons.stop),
+                    style: const ButtonStyle(
+                      backgroundColor: WidgetStatePropertyAll(Colors.redAccent),
+                    ),
+                    tooltip: '停止生成',
+                  ),
               ],
             ),
           ),
