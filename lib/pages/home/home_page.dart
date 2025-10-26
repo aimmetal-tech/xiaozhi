@@ -1,69 +1,74 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:xiaozhi/pages/chat_page.dart';
-import 'package:xiaozhi/pages/shared/drawer_page.dart';
+import 'package:xiaozhi/pages/discover_page.dart';
+import 'package:xiaozhi/pages/shared/home_drawer.dart';
+import 'package:xiaozhi/pages/user_page.dart';
 
-const List<Map<String, dynamic>> testButton = [
-  {'title': 'AI对话', 'route': ChatPage()},
-];
+class HomePageWithTabs extends ConsumerStatefulWidget {
+  const HomePageWithTabs({super.key});
 
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  @override
+  ConsumerState<HomePageWithTabs> createState() => _TopTabBarState();
+}
+
+class _TopTabBarState extends ConsumerState<HomePageWithTabs>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme; // 配色方案
-    final textTheme = Theme.of(context).textTheme; // 字体样式
-
     return Scaffold(
+      drawer: HomeDrawer(),
       appBar: AppBar(
-        backgroundColor: colorScheme.primary,
-        title: Text(
-          '小智·HIPER',
-          style: textTheme.headlineLarge!.copyWith(color: Colors.white),
-        ),
-        actions: [
-          IconButton(onPressed: () {}, icon: Icon(Icons.search, size: 30)),
-        ],
-        centerTitle: true,
-      ),
-      drawer: const HomeDrawer(),
-      drawerEdgeDragWidth: MediaQuery.of(context).size.width,
-      body: GridView.builder(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 20,
-          crossAxisSpacing: 20,
-          childAspectRatio: 1.0,
-        ),
-        itemCount: testButton.length,
-        itemBuilder: (context, index) {
-          final randomColor =
-              Colors.primaries[index % Colors.primaries.length].shade400;
-          return SizedBox.expand(
-            child: ElevatedButton(
-              style: ButtonStyle(
-                // WidgetStateProperty.all: 所有状态都用同一个值
-                backgroundColor: WidgetStateProperty.all(randomColor),
-                padding: WidgetStateProperty.all(EdgeInsets.zero),
-                shape: WidgetStateProperty.all(
-                  const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                ),
-              ),
-              onPressed: () {
-                Navigator.of(context).push(
-                  CupertinoPageRoute(
-                    builder: (context) => testButton[index]['route'],
-                  ),
-                );
-              },
-              child: Text(
-                testButton[index]['title'],
-                style: TextStyle(color: Colors.white, fontSize: 25),
+        automaticallyImplyLeading: false,
+        titleSpacing: 0,
+        iconTheme: IconThemeData(color: Colors.grey),
+        toolbarHeight: 56,
+        title: Row(
+          children: [
+            SizedBox(width: 16),
+            Builder(
+              builder: (context) => IconButton(
+                color: Colors.grey,
+                onPressed: () => Scaffold.of(context).openDrawer(),
+                icon: const Icon(Icons.menu),
               ),
             ),
-          );
-        },
+            SizedBox(width: 20),
+            Expanded(
+              child: TabBar(
+                controller: _tabController,
+                // isScrollable: true,
+                indicatorSize: TabBarIndicatorSize.label,
+                tabs: const [
+                  Tab(text: '智能对话'),
+                  Tab(text: '发现·探索'),
+                  Tab(text: '我的'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(5),
+          child: Divider(),
+        ),
+      ),
+      body: TabBarView(
+        // physics: const NeverScrollableScrollPhysics(),
+        controller: _tabController,
+        children: [
+          ChatPage(),
+          DiscoverPage(),
+          UserPage(),
+        ],
       ),
     );
   }
