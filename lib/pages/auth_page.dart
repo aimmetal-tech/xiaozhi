@@ -1,13 +1,12 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:go_router/go_router.dart';
 import 'package:xiaozhi/utils/toast.dart';
 import 'package:xiaozhi/services/logger_service.dart';
+import 'package:xiaozhi/routes/route_config.dart';
 
-String _mapAuthError(
-  FirebaseAuthException e, {
-  required bool forRegister,
-}) {
+String _mapAuthError(FirebaseAuthException e, {required bool forRegister}) {
   switch (e.code) {
     case 'invalid-email':
       return '邮箱格式不正确';
@@ -68,9 +67,13 @@ class _AuthLoginPageState extends State<AuthLoginPage> {
         password: _passwordController.text,
       );
       if (!mounted) return;
-      Navigator.of(context).pop();
+      context.pop();
     } on FirebaseAuthException catch (e) {
-      logger.e('邮箱登录失败(FirebaseAuthException)', error: e, stackTrace: e.stackTrace);
+      logger.e(
+        '邮箱登录失败(FirebaseAuthException)',
+        error: e,
+        stackTrace: e.stackTrace,
+      );
       final msg = _mapAuthError(e, forRegister: false);
       ToastUtil.show(msg: msg);
     } catch (e, st) {
@@ -89,12 +92,10 @@ class _AuthLoginPageState extends State<AuthLoginPage> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AuthRegisterPage()),
-              );
+              context.pushNamed(AppRouteNames.authRegister);
             },
             child: const Text('注册'),
-          )
+          ),
         ],
       ),
       body: Stack(
@@ -159,9 +160,13 @@ class _AuthRegisterPageState extends State<AuthRegisterPage> {
       );
       if (!mounted) return;
       ToastUtil.show(msg: '注册成功，请登录');
-      Navigator.of(context).pop();
+      context.pop();
     } on FirebaseAuthException catch (e) {
-      logger.e('邮箱注册失败(FirebaseAuthException)', error: e, stackTrace: e.stackTrace);
+      logger.e(
+        '邮箱注册失败(FirebaseAuthException)',
+        error: e,
+        stackTrace: e.stackTrace,
+      );
       final msg = _mapAuthError(e, forRegister: true);
       ToastUtil.show(msg: msg);
     } catch (e, st) {
@@ -210,9 +215,6 @@ class _AuthRegisterPageState extends State<AuthRegisterPage> {
   }
 }
 
-
-
-
 class _AuthLoadingOverlay extends StatelessWidget {
   const _AuthLoadingOverlay();
 
@@ -221,13 +223,7 @@ class _AuthLoadingOverlay extends StatelessWidget {
     final color = Theme.of(context).colorScheme.primary;
     return Container(
       color: Colors.black45,
-      child: Center(
-        child: SpinKitCircle(
-          color: color,
-          size: 48,
-        ),
-      ),
+      child: Center(child: SpinKitCircle(color: color, size: 48)),
     );
   }
 }
-

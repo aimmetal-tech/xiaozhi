@@ -8,7 +8,7 @@ final themeData = ThemeData(
   ),
   // IconButton默认样式
   iconButtonTheme: IconButtonThemeData(
-    style: IconButton.styleFrom(foregroundColor: Colors.white),
+    style: IconButton.styleFrom(foregroundColor: Colors.grey),
   ),
   // 文本默认样式
   textTheme: TextTheme(

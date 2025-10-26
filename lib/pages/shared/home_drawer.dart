@@ -1,7 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
-import 'package:xiaozhi/pages/chat_page.dart';
+import 'package:xiaozhi/routes/route_config.dart';
 import 'package:xiaozhi/services/conversation_service.dart';
 
 class HomeDrawer extends StatelessWidget {
@@ -75,11 +76,12 @@ class _ConversationList extends StatelessWidget {
               title: Text(convo.title.isEmpty ? '未命名会话' : convo.title),
               subtitle: Text(subtitle),
               onTap: () {
+                if (convo.id.isEmpty) return;
+                final router = GoRouter.of(context);
                 Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ChatPage(initialConversationId: convo.id),
-                  ),
+                router.pushNamed(
+                  AppRouteNames.chatDetail,
+                  pathParameters: {'conversationId': convo.id},
                 );
               },
             );

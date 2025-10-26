@@ -308,7 +308,7 @@ class _ChatPageState extends State<ChatPage> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.arrow_upward),
+                      icon: const Icon(Icons.arrow_upward, color: Colors.white,),
                       style: const ButtonStyle(
                         backgroundColor: WidgetStatePropertyAll(Colors.lightBlue),
                       ),
@@ -316,7 +316,7 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                     if (_isSending)
                       IconButton(
-                        icon: const Icon(Icons.stop),
+                        icon: const Icon(Icons.stop, color: Colors.white,),
                         style: const ButtonStyle(
                           backgroundColor: WidgetStatePropertyAll(Colors.redAccent),
                         ),

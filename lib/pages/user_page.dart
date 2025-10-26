@@ -1,7 +1,7 @@
-﻿import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:xiaozhi/pages/auth_page.dart';
+import 'package:go_router/go_router.dart';
+import 'package:xiaozhi/routes/route_config.dart';
 
 class UserPage extends StatelessWidget {
   const UserPage({super.key});
@@ -30,13 +30,7 @@ class UserPage extends StatelessWidget {
                   subtitle: user == null ? const Text('点击登录') : null,
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
-                    Navigator.of(
-                      context,
-                    ).push(
-                      CupertinoPageRoute(
-                        builder: (_) => const AuthLoginPage(),
-                      ),
-                    );
+                    context.pushNamed(AppRouteNames.authLogin);
                   },
                 );
               },
