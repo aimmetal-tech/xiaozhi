@@ -47,9 +47,15 @@ app.*.map.json
 # API_KEY related
 .env
 
-# AI IDE related
-.lingma/
-.vscode/
-
 # FVM Version Cache
 .fvm/
+
+# log Related
+logs/
+
+# AI or Agent Related
+.codex/
+.lingma/
+
+# Codex Related
+AGENTS.md

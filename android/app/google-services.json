@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "784980154847",
+    "project_id": "xiaozhi-hyper",
+    "storage_bucket": "xiaozhi-hyper.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:784980154847:android:bfbdff42e4c695d3aa0c6a",
+        "android_client_info": {
+          "package_name": "com.example.xiaozhi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBKt1Jaluv0MnPx4HKYJBe9bRaNt3-y-sI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

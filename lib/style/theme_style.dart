@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-final myTheme = ThemeData(
+final themeData = ThemeData(
   // 应用程序颜色方案
   colorScheme: ColorScheme.fromSeed(
     seedColor: Colors.blue,
@@ -35,7 +35,7 @@ final myTheme = ThemeData(
     labelSmall: TextStyle(
       fontFamily: 'MiSans',
       fontWeight: FontWeight.w300,
-      fontSize: 15,
+      fontSize: 12,
     ),
   ),
 );
