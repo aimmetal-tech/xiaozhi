@@ -1,72 +1,56 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+
 import 'package:xiaozhi/models/chat_model.dart';
 import 'package:xiaozhi/services/chat_service.dart';
+import 'package:xiaozhi/services/conversation_service.dart';
 import 'package:xiaozhi/services/logger_service.dart';
 import 'package:xiaozhi/style/glow_background.dart';
 import 'package:xiaozhi/utils/toast.dart';
 import 'package:xiaozhi/widgets/chat_bubble.dart';
 
 class ChatPage extends StatefulWidget {
-  const ChatPage({super.key});
+  const ChatPage({super.key, this.initialConversationId});
+
+  final String? initialConversationId;
 
   @override
   State<ChatPage> createState() => _ChatPageState();
 }
 
 class _ChatPageState extends State<ChatPage> {
-  bool isUser = true;
-  bool isSending = false;
+  static const String _systemPromptContent =
+      '你的名字是小智同学，你会根据用户的问题给出合理的回答，你要尽量解决学习问题。当回答用户问题时要使用markdown格式进行回复';
+
+  final TextEditingController _textEditingController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final FocusNode _focusNode = FocusNode();
+  final List<Map<String, String>> _chatHistory = [];
+  final ConversationService _convSvc = ConversationService();
+
+  bool _isSending = false;
   bool _scrollScheduled = false;
   final double _autoScrollThreshold = 48;
   StreamSubscription<ChatSSEModel>? _sseSub;
-
-  // 定义控制器，文本编辑控制器和滚动控制器
-  final TextEditingController _textEditingController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  final List<Map<String, String>> chatHistory = [];
-
-  ColorScheme get colorScheme => Theme.of(context).colorScheme;
-  TextTheme get textTheme => Theme.of(context).textTheme;
-  Size get screenSize => MediaQuery.of(context).size;
-
-  final FocusNode _focusNode = FocusNode();
-
-  void _scrollToBottom() {
-    if (_scrollScheduled) return;
-    _scrollScheduled = true;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollScheduled = false;
-      if (!_scrollController.hasClients) return;
-
-      final pos = _scrollController.position;
-      final distance = pos.maxScrollExtent - pos.pixels;
-
-      if (distance <= _autoScrollThreshold) {
-        if (distance < 300) {
-          _scrollController.animateTo(
-            pos.maxScrollExtent,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-          );
-        } else {
-          _scrollController.jumpTo(pos.maxScrollExtent);
-        }
-      }
-    });
-  }
+  String? _conversationId;
+  String? _firstUserText;
+  String _assistantBuffer = '';
+  String? _pendingUserMessage;
+  bool _pendingMessageStored = false;
 
   @override
   void initState() {
     super.initState();
-    chatHistory.add({
-      'role': 'system',
-      'content':
-          '你的名字是小智同学，你会根据用户的问题提出合理的解答，你尤其擅长解决学习问题。当回答用户问题时要用markdown格式进行回答',
-    });
+    _chatHistory.add({'role': 'system', 'content': _systemPromptContent});
+    final initialId = widget.initialConversationId;
+    if (initialId != null && initialId.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadConversation(initialId);
+      });
+    }
   }
 
   @override
@@ -76,6 +60,200 @@ class _ChatPageState extends State<ChatPage> {
     _focusNode.dispose();
     _sseSub?.cancel();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    if (_scrollScheduled) return;
+    _scrollScheduled = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollScheduled = false;
+      if (!_scrollController.hasClients) return;
+
+      final position = _scrollController.position;
+      final distance = position.maxScrollExtent - position.pixels;
+
+      if (distance <= _autoScrollThreshold) {
+        if (distance < 300) {
+          _scrollController.animateTo(
+            position.maxScrollExtent,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+          );
+        } else {
+          _scrollController.jumpTo(position.maxScrollExtent);
+        }
+      }
+    });
+  }
+
+  String _generateTitle(String text) {
+    final trimmed = text.replaceAll('\n', ' ').trim();
+    if (trimmed.isEmpty) return '新对话';
+    return trimmed.length <= 20 ? trimmed : '${trimmed.substring(0, 20)}…';
+  }
+
+  Future<void> _loadConversation(String conversationId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ToastUtil.show(msg: '请先登录');
+      return;
+    }
+
+    try {
+      final messages = await _convSvc.fetchMessages(
+        uid: user.uid,
+        conversationId: conversationId,
+      );
+      await _sseSub?.cancel();
+      if (!mounted) return;
+      setState(() {
+        _conversationId = conversationId;
+        _isSending = false;
+        _assistantBuffer = '';
+        _chatHistory
+          ..clear()
+          ..add({'role': 'system', 'content': _systemPromptContent})
+          ..addAll(messages
+              .map((m) => {'role': m.role, 'content': m.content}));
+      });
+      _pendingUserMessage = null;
+      _pendingMessageStored = false;
+      for (final msg in messages) {
+        if (msg.role == 'user' && msg.content.trim().isNotEmpty) {
+          _firstUserText = msg.content;
+          break;
+        }
+      }
+      _scrollToBottom();
+    } catch (e, st) {
+      logger.e('加载历史对话失败', error: e, stackTrace: st);
+      ToastUtil.show(msg: '加载历史对话失败');
+    }
+  }
+
+  Future<void> _handleSend() async {
+    final content = _textEditingController.text.trim();
+    if (content.isEmpty) return;
+
+    _textEditingController.clear();
+
+    _chatHistory.add({'role': 'user', 'content': content});
+    _pendingUserMessage = content;
+    _pendingMessageStored = false;
+    _firstUserText ??= content;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ToastUtil.show(msg: '未登录，将无法保存对话');
+    } else if (_conversationId != null) {
+      await _convSvc.addMessage(
+        uid: user.uid,
+        conversationId: _conversationId!,
+        role: 'user',
+        content: content,
+      );
+      _pendingMessageStored = true;
+    }
+
+    setState(() {
+      _isSending = true;
+      _chatHistory.add({'role': 'assistant', 'content': ''});
+    });
+    _scrollToBottom();
+
+    final requestBody = ChatRequestModel(
+      messages: _chatHistory,
+      stream: true,
+    );
+
+    _assistantBuffer = '';
+    _sseSub = chatServiceStream(requestBody).listen(
+      (evt) async {
+        if (evt.error != null && evt.error!.isNotEmpty) {
+          if (!mounted) return;
+          logger.e('SSE error: ${evt.error}');
+          ToastUtil.show(msg: 'SSE错误: ${evt.error}');
+          return;
+        }
+
+        if (evt.done) {
+          if (!mounted) return;
+          setState(() => _isSending = false);
+          final user = FirebaseAuth.instance.currentUser;
+          if (_conversationId != null && _assistantBuffer.isNotEmpty && user != null) {
+            await _convSvc.addMessage(
+              uid: user.uid,
+              conversationId: _conversationId!,
+              role: 'assistant',
+              content: _assistantBuffer,
+            );
+          }
+          _assistantBuffer = '';
+          _pendingUserMessage = null;
+          _pendingMessageStored = false;
+          return;
+        }
+
+        if (_conversationId == null && evt.id.isNotEmpty) {
+          _conversationId = evt.id;
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            final title = _generateTitle(_firstUserText ?? _pendingUserMessage ?? '');
+            await _convSvc.ensureConversation(
+              uid: user.uid,
+              conversationId: _conversationId!,
+              title: title,
+            );
+            if (!_pendingMessageStored && _pendingUserMessage != null && _pendingUserMessage!.isNotEmpty) {
+              await _convSvc.addMessage(
+                uid: user.uid,
+                conversationId: _conversationId!,
+                role: 'user',
+                content: _pendingUserMessage!,
+              );
+              _pendingMessageStored = true;
+            }
+          }
+        }
+
+        if (evt.delta.isNotEmpty) {
+          if (!mounted) return;
+          setState(() {
+            for (var i = _chatHistory.length - 1; i >= 0; i--) {
+              if (_chatHistory[i]['role'] == 'assistant') {
+                final previous = _chatHistory[i]['content'] ?? '';
+                _chatHistory[i]['content'] = previous + evt.delta;
+                break;
+              }
+            }
+            _scrollToBottom();
+          });
+          _assistantBuffer += evt.delta;
+        }
+      },
+      onError: (error) {
+        if (!mounted) return;
+        logger.e('SSE subscription error: $error');
+        ToastUtil.show(msg: '异常: $error');
+        setState(() => _isSending = false);
+      },
+      onDone: () {
+        if (!mounted) return;
+        setState(() => _isSending = false);
+      },
+      cancelOnError: true,
+    );
+  }
+
+  Future<void> _cancelGeneration() async {
+    await _sseSub?.cancel();
+    setState(() {
+      _isSending = false;
+    });
+    _assistantBuffer = '';
+    _pendingUserMessage = null;
+    _pendingMessageStored = false;
   }
 
   @override
@@ -91,10 +269,11 @@ class _ChatPageState extends State<ChatPage> {
                   padding: const EdgeInsets.only(top: 16),
                   child: ListView.builder(
                     controller: _scrollController,
-                    itemCount: chatHistory.length,
+                    itemCount: _chatHistory.length,
                     itemBuilder: (context, index) {
-                      final role = chatHistory[index]['role'];
-                      final text = chatHistory[index]['content'] ?? '';
+                      final entry = _chatHistory[index];
+                      final role = entry['role'];
+                      final text = entry['content'] ?? '';
                       if (role == 'system') return const SizedBox.shrink();
                       return ChatBubble(role: role ?? 'assistant', text: text);
                     },
@@ -102,21 +281,20 @@ class _ChatPageState extends State<ChatPage> {
                 ),
               ),
               SizedBox(
-                height: 30, // 按需调大到和圆圈尺寸+边距一致
+                height: 30,
                 child: Center(
-                  child: isSending
+                  child: _isSending
                       ? Row(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('小智正在回应消息'),
+                          children: const [
+                            Text('小智正在回复消息'),
+                            SizedBox(width: 8),
                             SpinKitCircle(color: Colors.black, size: 20),
                           ],
                         )
-                      : null, // 不发送时占位但不渲染内容
+                      : null,
                 ),
               ),
-
-              /// 输入框
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 48),
                 child: Row(
@@ -126,116 +304,24 @@ class _ChatPageState extends State<ChatPage> {
                         focusNode: _focusNode,
                         onTapOutside: (_) => _focusNode.unfocus(),
                         controller: _textEditingController,
-                        decoration: InputDecoration(hintText: '问问小智...'),
+                        decoration: const InputDecoration(hintText: '向小智提问...'),
                       ),
                     ),
-                    // 发送消息
                     IconButton(
-                      icon: Icon(Icons.arrow_upward),
-                      style: ButtonStyle(
-                        backgroundColor: WidgetStatePropertyAll(
-                          Colors.lightBlue,
-                        ),
+                      icon: const Icon(Icons.arrow_upward),
+                      style: const ButtonStyle(
+                        backgroundColor: WidgetStatePropertyAll(Colors.lightBlue),
                       ),
-                      onPressed: isSending
-                          ? null
-                          : () async {
-                              try {
-                                final content = _textEditingController.text
-                                    .trim();
-                                if (content.isEmpty) return;
-                                // 将用户消息加入历史并清空输入
-                                chatHistory.add({
-                                  'role': 'user',
-                                  'content': content,
-                                });
-                                _textEditingController.clear();
-                                final requestBody = ChatRequestModel(
-                                  messages: chatHistory,
-                                  stream: true, // 开启流式
-                                );
-
-                                // 先插入一条 AI 占位消息
-                                setState(() {
-                                  isSending = true;
-                                  chatHistory.add({
-                                    'role': 'assistant',
-                                    'content': '',
-                                  });
-                                });
-
-                                _sseSub = chatServiceStream(requestBody).listen(
-                                  (evt) {
-                                    if (evt.error != null &&
-                                        evt.error!.isNotEmpty) {
-                                      if (!context.mounted) return;
-                                      logger.e(
-                                        'SSE error from stream: ${evt.error!}',
-                                      );
-                                      ToastUtil.show(
-                                        msg: 'SSE错误: ${evt.error}',
-                                      );
-                                      return;
-                                    }
-                                    if (evt.done) {
-                                      if (!context.mounted) return;
-                                      setState(() => isSending = false);
-                                      return;
-                                    }
-                                    if (evt.delta.isNotEmpty) {
-                                      setState(() {
-                                        // 找到最后一条 assistant 消息，增量拼接
-                                        for (
-                                          int i = chatHistory.length - 1;
-                                          i >= 0;
-                                          i--
-                                        ) {
-                                          if (chatHistory[i]['role'] ==
-                                              'assistant') {
-                                            final prev =
-                                                chatHistory[i]['content'] ?? '';
-                                            chatHistory[i]['content'] =
-                                                prev + evt.delta;
-                                            break;
-                                          }
-                                        }
-                                        _scrollToBottom();
-                                      });
-                                    }
-                                  },
-                                  onError: (e) {
-                                    if (!context.mounted) return;
-                                    logger.e('SSE subscription error: $e');
-                                    ToastUtil.show(msg: '异常: $e');
-                                    setState(() => isSending = false);
-                                  },
-                                  onDone: () {
-                                    if (!context.mounted) return;
-                                    setState(() => isSending = false);
-                                  },
-                                  cancelOnError: true,
-                                );
-                              } catch (e) {
-                                if (!context.mounted) return;
-                                logger.e(e.toString());
-                                ToastUtil.show(msg: '异常: $e');
-                                setState(() => isSending = false);
-                              }
-                            },
+                      onPressed: _isSending ? null : _handleSend,
                     ),
-                    if (isSending)
+                    if (_isSending)
                       IconButton(
                         icon: const Icon(Icons.stop),
                         style: const ButtonStyle(
-                          backgroundColor: WidgetStatePropertyAll(
-                            Colors.redAccent,
-                          ),
+                          backgroundColor: WidgetStatePropertyAll(Colors.redAccent),
                         ),
                         tooltip: '停止生成',
-                        onPressed: () async {
-                          await _sseSub?.cancel();
-                          setState(() => isSending = false);
-                        },
+                        onPressed: _cancelGeneration,
                       ),
                   ],
                 ),
