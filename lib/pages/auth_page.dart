@@ -1,44 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:go_router/go_router.dart';
-import 'package:xiaozhi/utils/toast.dart';
-import 'package:xiaozhi/services/logger_service.dart';
+import 'package:xiaozhi/models/auth/auth_credentials.dart';
+import 'package:xiaozhi/models/auth/auth_failure.dart';
 import 'package:xiaozhi/routes/route_config.dart';
-
-String _mapAuthError(FirebaseAuthException e, {required bool forRegister}) {
-  switch (e.code) {
-    case 'invalid-email':
-      return '邮箱格式不正确';
-    case 'user-disabled':
-      return '账户已被禁用，请联系管理员';
-    case 'user-not-found':
-      return '账户不存在，请先注册';
-    case 'wrong-password':
-      return '密码错误，请重试';
-    case 'weak-password':
-      return '密码太弱，请至少使用 6 位字符';
-    case 'email-already-in-use':
-      return '邮箱已注册，请直接登录';
-    case 'operation-not-allowed':
-    case 'configuration-not-found':
-      return 'Firebase 控制台未启用邮箱密码登录，请先在 Authentication → Sign-in method 中开启';
-    case 'unknown':
-      final message = e.message ?? '';
-      if (message.contains('CONFIGURATION_NOT_FOUND')) {
-        return 'Firebase 控制台未启用邮箱密码登录，请先在 Authentication → Sign-in method 中开启';
-      }
-      if (message.isNotEmpty) {
-        return message;
-      }
-      return forRegister ? '注册失败，请稍后再试' : '登录失败，请稍后再试';
-    default:
-      if (e.message != null && e.message!.isNotEmpty) {
-        return e.message!;
-      }
-      return forRegister ? '注册失败，请稍后再试' : '登录失败，请稍后再试';
-  }
-}
+import 'package:xiaozhi/services/auth/auth_service.dart';
+import 'package:xiaozhi/services/logger_service.dart';
+import 'package:xiaozhi/utils/toast.dart';
 
 class AuthLoginPage extends StatefulWidget {
   const AuthLoginPage({super.key});
@@ -62,22 +30,18 @@ class _AuthLoginPageState extends State<AuthLoginPage> {
   Future<void> _login() async {
     setState(() => _loading = true);
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
+      await authService.signIn(
+        AuthCredentials(
+          email: _emailController.text,
+          password: _passwordController.text,
+        ),
       );
       if (!mounted) return;
       context.pop();
-    } on FirebaseAuthException catch (e) {
-      logger.e(
-        '邮箱登录失败(FirebaseAuthException)',
-        error: e,
-        stackTrace: e.stackTrace,
-      );
-      final msg = _mapAuthError(e, forRegister: false);
-      ToastUtil.show(msg: msg);
+    } on AuthFailure catch (e) {
+      ToastUtil.show(msg: e.message);
     } catch (e, st) {
-      logger.e('邮箱登录失败(未知异常)', error: e, stackTrace: st);
+      logger.e('邮箱登录失败(页面异常)', error: e, stackTrace: st);
       ToastUtil.show(msg: '登录失败，请稍后再试');
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -154,23 +118,19 @@ class _AuthRegisterPageState extends State<AuthRegisterPage> {
   Future<void> _register() async {
     setState(() => _loading = true);
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
+      await authService.register(
+        AuthCredentials(
+          email: _emailController.text,
+          password: _passwordController.text,
+        ),
       );
       if (!mounted) return;
       ToastUtil.show(msg: '注册成功，请登录');
       context.pop();
-    } on FirebaseAuthException catch (e) {
-      logger.e(
-        '邮箱注册失败(FirebaseAuthException)',
-        error: e,
-        stackTrace: e.stackTrace,
-      );
-      final msg = _mapAuthError(e, forRegister: true);
-      ToastUtil.show(msg: msg);
+    } on AuthFailure catch (e) {
+      ToastUtil.show(msg: e.message);
     } catch (e, st) {
-      logger.e('邮箱注册失败(未知异常)', error: e, stackTrace: st);
+      logger.e('邮箱注册失败(页面异常)', error: e, stackTrace: st);
       ToastUtil.show(msg: '注册失败，请稍后再试');
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -197,7 +157,7 @@ class _AuthRegisterPageState extends State<AuthRegisterPage> {
                 TextField(
                   controller: _passwordController,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: '密码（至少6位）'),
+                  decoration: const InputDecoration(labelText: '密码（至少 6 位）'),
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
