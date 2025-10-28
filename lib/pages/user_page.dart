@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:xiaozhi/provider/auth_provider.dart';
 import 'package:xiaozhi/routes/route_config.dart';
 
-class UserPage extends StatelessWidget {
+class UserPage extends ConsumerWidget {
   const UserPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            StreamBuilder<User?>(
-              stream: FirebaseAuth.instance.authStateChanges(),
-              builder: (context, snapshot) {
-                final user = snapshot.data;
+            authState.when(
+              data: (user) {
                 final email = user?.email ?? '未登录';
                 final avatarChild = user == null
                     ? const Icon(Icons.person)
@@ -34,6 +35,12 @@ class UserPage extends StatelessWidget {
                   },
                 );
               },
+              error: (err, stack) => ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.error)),
+                title: const Text('状态加载失败'),
+                subtitle: Text(err.toString()),
+              ),
+              loading: () => const CircularProgressIndicator(),
             ),
             const SizedBox(height: 16),
             Card(
@@ -70,6 +77,14 @@ class UserPage extends StatelessWidget {
                   ListTile(title: Text('设置')),
                 ],
               ),
+            ),
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: () {
+                ref.read(authProvider.notifier).signOut();
+              },
+              label: Text('退出登录'),
+              icon: Icon(Icons.logout),
             ),
           ],
         ),

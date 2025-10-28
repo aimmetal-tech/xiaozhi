@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:xiaozhi/models/auth/auth_credentials.dart';
 import 'package:xiaozhi/models/auth/auth_failure.dart';
+import 'package:xiaozhi/provider/auth_provider.dart';
 import 'package:xiaozhi/routes/route_config.dart';
-import 'package:xiaozhi/services/auth/auth_service.dart';
-import 'package:xiaozhi/services/logger_service.dart';
 import 'package:xiaozhi/utils/toast.dart';
 
-class AuthLoginPage extends StatefulWidget {
+class AuthLoginPage extends ConsumerStatefulWidget {
   const AuthLoginPage({super.key});
 
   @override
-  State<AuthLoginPage> createState() => _AuthLoginPageState();
+  ConsumerState<AuthLoginPage> createState() => _AuthLoginPageState();
 }
 
-class _AuthLoginPageState extends State<AuthLoginPage> {
+class _AuthLoginPageState extends ConsumerState<AuthLoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _loading = false;
 
   @override
   void dispose() {
@@ -27,29 +27,40 @@ class _AuthLoginPageState extends State<AuthLoginPage> {
     super.dispose();
   }
 
-  Future<void> _login() async {
-    setState(() => _loading = true);
-    try {
-      await authService.signIn(
-        AuthCredentials(
-          email: _emailController.text,
-          password: _passwordController.text,
-        ),
-      );
-      if (!mounted) return;
-      context.pop();
-    } on AuthFailure catch (e) {
-      ToastUtil.show(msg: e.message);
-    } catch (e, st) {
-      logger.e('邮箱登录失败(页面异常)', error: e, stackTrace: st);
-      ToastUtil.show(msg: '登录失败，请稍后再试');
-    } finally {
-      if (mounted) setState(() => _loading = false);
+  String _errorMessage(Object error) {
+    if (error is AuthFailure) {
+      return error.message;
     }
+    return '登录失败，请稍后再试';
+  }
+
+  Future<void> signIn() async {
+    await ref.read(authProvider.notifier).signInWithEmailAndPassword(
+      AuthCredentials(
+        email: _emailController.text,
+        password: _passwordController.text,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
+      next.whenOrNull(
+        data: (user) {
+          if (user != null && mounted) {
+            context.pop();
+          }
+        },
+        error: (error, stackTrace) {
+          ToastUtil.show(msg: _errorMessage(error));
+        },
+      );
+    });
+
+    final authState = ref.watch(authProvider);
+    final isLoading = authState.isLoading;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('邮箱登录'),
@@ -82,31 +93,30 @@ class _AuthLoginPageState extends State<AuthLoginPage> {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  onPressed: _loading ? null : _login,
+                  onPressed: isLoading ? null : signIn,
                   icon: const Icon(Icons.login),
                   label: const Text('登录'),
                 ),
               ],
             ),
           ),
-          if (_loading) const _AuthLoadingOverlay(),
+          if (isLoading) const _AuthLoadingOverlay(),
         ],
       ),
     );
   }
 }
 
-class AuthRegisterPage extends StatefulWidget {
+class AuthRegisterPage extends ConsumerStatefulWidget {
   const AuthRegisterPage({super.key});
 
   @override
-  State<AuthRegisterPage> createState() => _AuthRegisterPageState();
+  ConsumerState<AuthRegisterPage> createState() => _AuthRegisterPageState();
 }
 
-class _AuthRegisterPageState extends State<AuthRegisterPage> {
+class _AuthRegisterPageState extends ConsumerState<AuthRegisterPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _loading = false;
 
   @override
   void dispose() {
@@ -115,30 +125,41 @@ class _AuthRegisterPageState extends State<AuthRegisterPage> {
     super.dispose();
   }
 
-  Future<void> _register() async {
-    setState(() => _loading = true);
-    try {
-      await authService.register(
-        AuthCredentials(
-          email: _emailController.text,
-          password: _passwordController.text,
-        ),
-      );
-      if (!mounted) return;
-      ToastUtil.show(msg: '注册成功，请登录');
-      context.pop();
-    } on AuthFailure catch (e) {
-      ToastUtil.show(msg: e.message);
-    } catch (e, st) {
-      logger.e('邮箱注册失败(页面异常)', error: e, stackTrace: st);
-      ToastUtil.show(msg: '注册失败，请稍后再试');
-    } finally {
-      if (mounted) setState(() => _loading = false);
+  String _errorMessage(Object error) {
+    if (error is AuthFailure) {
+      return error.message;
     }
+    return '注册失败，请稍后再试';
+  }
+
+  Future<void> _register() async {
+    await ref.read(authProvider.notifier).registerWithEmailAndPassword(
+          AuthCredentials(
+            email: _emailController.text,
+            password: _passwordController.text,
+          ),
+        );
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
+      next.whenOrNull(
+        data: (user) {
+          if (user != null && mounted) {
+            ToastUtil.show(msg: '注册成功，请登录');
+            context.pop();
+          }
+        },
+        error: (error, stackTrace) {
+          ToastUtil.show(msg: _errorMessage(error));
+        },
+      );
+    });
+
+    final authState = ref.watch(authProvider);
+    final isLoading = authState.isLoading;
+
     return Scaffold(
       appBar: AppBar(title: const Text('邮箱注册')),
       body: Stack(
@@ -161,14 +182,14 @@ class _AuthRegisterPageState extends State<AuthRegisterPage> {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  onPressed: _loading ? null : _register,
+                  onPressed: isLoading ? null : _register,
                   icon: const Icon(Icons.person_add),
                   label: const Text('注册'),
                 ),
               ],
             ),
           ),
-          if (_loading) const _AuthLoadingOverlay(),
+          if (isLoading) const _AuthLoadingOverlay(),
         ],
       ),
     );
