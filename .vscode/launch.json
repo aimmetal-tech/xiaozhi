@@ -9,7 +9,10 @@
             "program": "lib/main.dart",
             "deviceId": "emulator-5554",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            "args": [
+                "--enable-experiment=dot-shorthands"
+            ]
         },
         {
             "name": "xiaozhi",

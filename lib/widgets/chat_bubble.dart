@@ -4,9 +4,9 @@ import 'package:xiaozhi/style/markdown_config.dart';
 
 class ChatBubble extends StatelessWidget {
   final String role;
-  final String text;
+  final String content;
 
-  const ChatBubble({super.key, required this.role, required this.text});
+  const ChatBubble({super.key, required this.role, required this.content});
 
   bool _looksLikeMarkdown(String s) {
     return s.contains('```') ||
@@ -25,12 +25,12 @@ class ChatBubble extends StatelessWidget {
 
     // 最大宽度
     final maxWidth = isUser ? size.width / 1.6 : size.width / 1.2;
-    final Widget content = isUser || !_looksLikeMarkdown(text)
+    final Widget content = isUser || !_looksLikeMarkdown(this.content)
         ? SelectableText(
-            text,
+            this.content,
             style: textTheme.bodySmall!.copyWith(fontSize: 16),
           )
-        : MarkdownWidget(data: text, shrinkWrap: true, config: buildMarkdownConfig(context),);
+        : MarkdownWidget(data: this.content, shrinkWrap: true, config: buildMarkdownConfig(context),);
 
     final bubble = UnconstrainedBox(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,

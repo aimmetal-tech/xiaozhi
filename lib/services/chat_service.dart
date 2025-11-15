@@ -7,54 +7,22 @@ import 'package:xiaozhi/models/chat_model.dart';
 import 'package:xiaozhi/services/logger_service.dart';
 
 String serverUrl = dotenv.env['SERVER_URL'] ?? 'http://localhost';
-String port = '8080';
+String port = '8000';
 
-Map<String, Uri> apiUriList = {
-  'Kimi': Uri.parse('$serverUrl:$port/chat/completions'),
-};
-
-Future<Map<String, dynamic>> chatService(ChatRequestModel requestBody) async {
-  try {
-    final response = await http.post(
-      apiUriList['Kimi']!,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(requestBody),
-    );
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      logger.i({'success': true, 'data': responseData}.toString());
-      return {'success': true, 'data': responseData};
-    } else {
-      return {
-        'success': false,
-        'error': 'HTTP Error: ${response.statusCode}',
-        'message': response.body,
-      };
-    }
-  } catch (e) {
-    logger.e(e.toString());
-    return {
-      'success': false,
-      'error': 'Exception occurred',
-      'message': e.toString(),
-    };
-  }
-}
+Uri uri = Uri.parse('$serverUrl:$port/v1/chat/completions');
 
 Stream<ChatSSEModel> chatServiceStream(ChatRequestModel requestBody) async* {
   final client = http.Client();
   try {
-    final request = http.Request('POST', apiUriList['Kimi']!);
+    final request = http.Request('POST', uri);
     final body = requestBody.toJson()..['stream'] = true;
-    
+
     try {
       final List<dynamic> msgs = (body['messages'] as List<dynamic>);
       final filtered = msgs.where((m) {
-        final role = (m as Map)['role'];
+        // final role = (m as Map)['role'];
         final content = (m)['content'];
-        return role == 'user' &&
-            (content is String) &&
-            content.trim().isNotEmpty;
+        return (content is String) && content.trim().isNotEmpty;
       }).toList();
       body['messages'] = filtered;
     } catch (_) {}
@@ -100,9 +68,9 @@ Stream<ChatSSEModel> chatServiceStream(ChatRequestModel requestBody) async* {
             if (!trimmed.startsWith('data:')) continue;
 
             try {
-              final model = ChatSSEModel.fromEventLine(trimmed);
-              yield model;
-              if (model.done) return;
+              final sseModel = ChatSSEModel.fromEventLine(trimmed);
+              yield sseModel;
+              if (sseModel.done) return;
             } catch (e) {
               logger.e('SSE parse error: $e; line: $trimmed');
               yield ChatSSEModel(id: '', delta: '', error: 'parse_error: $e');

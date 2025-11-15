@@ -74,7 +74,6 @@ class UserPage extends ConsumerWidget {
                   ListTile(title: Text('设置')),
                   ListTile(title: Text('设置')),
                   ListTile(title: Text('设置')),
-                  ListTile(title: Text('设置')),
                 ],
               ),
             ),

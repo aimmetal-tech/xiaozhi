@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:xiaozhi/services/logger_service.dart';
 
 typedef FirestoreTask = Future<void> Function();
-
+// 带有重试的运行
 Future<void> _runWithRetry(FirestoreTask task, {int maxRetry = 3}) async {
   int attempt = 0;
   while (true) {
@@ -20,20 +20,20 @@ Future<void> _runWithRetry(FirestoreTask task, {int maxRetry = 3}) async {
     }
   }
 }
-
+// 会话标题模型
 class ConversationSummary {
   final String id;
   final String title;
   final DateTime? createdAt;
   final DateTime? updatedAt;
-
+  // 构造函数
   ConversationSummary({
     required this.id,
     required this.title,
     this.createdAt,
     this.updatedAt,
   });
-
+  // 工厂函数-从数据库中获取
   factory ConversationSummary.fromSnapshot(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
@@ -48,13 +48,13 @@ class ConversationSummary {
     );
   }
 }
-
+// 单条消息模型
 class ConversationMessage {
   final String role;
   final String content;
 
   ConversationMessage({required this.role, required this.content});
-
+  // 工厂函数-从数据库获取
   factory ConversationMessage.fromSnapshot(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
@@ -68,14 +68,14 @@ class ConversationMessage {
 
 class ConversationService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-
+  // 根据用户id和会话id获取对应的对话引用
   DocumentReference<Map<String, dynamic>> conversationRef(
     String uid,
     String conversationId,
   ) {
     return _db.collection('users').doc(uid).collection('conversations').doc(conversationId);
   }
-
+  // 确保会话存在，若不存在则创建它
   Future<void> ensureConversation({
     required String uid,
     required String conversationId,
@@ -93,7 +93,7 @@ class ConversationService {
       });
     }
   }
-
+  // 填补标题
   Future<void> updateTitleIfEmpty({
     required String uid,
     required String conversationId,
@@ -112,7 +112,7 @@ class ConversationService {
       await ensureConversation(uid: uid, conversationId: conversationId, title: title);
     }
   }
-
+  // 添加Message
   Future<void> addMessage({
     required String uid,
     required String conversationId,
@@ -130,7 +130,7 @@ class ConversationService {
           .update({'updatedAt': FieldValue.serverTimestamp()});
     });
   }
-
+  // 更新会话-数据流
   Stream<List<ConversationSummary>> userConversationsStream(String uid) {
     final ref = _db
         .collection('users')
@@ -144,7 +144,7 @@ class ConversationService {
               .toList(),
         );
   }
-
+  // 加载某个会话的所有内容
   Future<List<ConversationMessage>> fetchMessages({
     required String uid,
     required String conversationId,

@@ -19,9 +19,9 @@ final GoRouter appRouter = GoRouter(
           builder: (context, state) {
             final conversationId = state.pathParameters['conversationId'];
             if (conversationId == null || conversationId.isEmpty) {
-              return const ChatPage();
+              return ChatPage();
             }
-            return ChatPage(initialConversationId: conversationId);
+            return ChatPage(conversationId: conversationId);
           },
         ),
       ],
@@ -29,7 +29,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       name: AppRouteNames.chatStandalone,
       path: AppRoutePaths.chatStandalone,
-      builder: (context, state) => const ChatPage(),
+      builder: (context, state) => ChatPage(),
     ),
     GoRoute(
       path: AppRoutePaths.auth,

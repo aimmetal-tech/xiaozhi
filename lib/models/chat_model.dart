@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+// 请求模型
 class ChatRequestModel {
   final String model;
   final List<Map<String, String>> messages;
@@ -7,7 +8,7 @@ class ChatRequestModel {
   final bool stream;
 
   ChatRequestModel({
-    this.model = 'kimi-k2-0905-preview',
+    this.model = 'qwen/qwen-plus',
     required this.messages,
     this.temperature = 0.6,
     this.stream = false,
@@ -23,23 +24,7 @@ class ChatRequestModel {
   }
 }
 
-class ChatResponseModel {
-  final String id;
-  final String content;
-
-  ChatResponseModel({required this.id, required this.content});
-
-  factory ChatResponseModel.fromJson(Map<String, dynamic> json) {
-    final data = json['data'];
-    final id = data['id'];
-    final choices = data['choices'] as List;
-    final message = choices.first['message'];
-    final content = message['content'];
-
-    return ChatResponseModel(id: id, content: content);
-  }
-}
-
+// SSE响应模型
 class ChatSSEModel {
   final String id;
   final String delta;
@@ -74,5 +59,29 @@ class ChatSSEModel {
         '';
 
     return ChatSSEModel(id: id, delta: delta);
+  }
+}
+
+// 消息存储模型
+class MessageModel {
+  final String? messageId;
+  final String role;
+  final String content;
+
+  MessageModel({
+    required this.role,
+    required this.content,
+    required this.messageId,
+  });
+  Map<String, String> toJson() {
+    return {'role': role, 'content': content, 'messageId': ?messageId};
+  }
+
+  factory MessageModel.fromJson(Map<String, dynamic> json) {
+    return MessageModel(
+      role: json['role'],
+      content: json['content'],
+      messageId: json['messageId'],
+    );
   }
 }
